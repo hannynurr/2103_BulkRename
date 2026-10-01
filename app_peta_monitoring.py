@@ -18,7 +18,6 @@ tesseract_path = shutil.which("tesseract")
 if tesseract_path:
     pytesseract.pytesseract.tesseract_cmd = tesseract_path
 else:
-    # Fallback default Windows path jika tidak ditemukan di environment PATH
     windows_default = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
     if os.path.exists(windows_default):
         pytesseract.pytesseract.tesseract_cmd = windows_default
@@ -96,12 +95,12 @@ if uploaded_files:
                 
                 sn = None
                 
-                # Daftar area target crop untuk Foto 1 (Kanan Atas) dan Foto 2 (Kiri Atas)
+                # Daftar area target crop (Kanan Atas untuk Foto 1 & Sisi Kiri Vertikal untuk Foto 2)
                 regions = [
                     # 1. Area Kanan Atas (Format Peta Foto 1)
                     img_cv[0:int(tinggi * 0.15), int(lebar * 0.60):lebar],
-                    # 2. Area Kiri Atas (Format Peta Foto 2)
-                    img_cv[0:int(tinggi * 0.15), 0:int(lebar * 0.40)],
+                    # 2. Area Sisi Kiri Vertikal Full (Format Peta Foto 2)
+                    img_cv[0:tinggi, 0:int(lebar * 0.08)],
                 ]
                 
                 for region in regions:
@@ -115,12 +114,20 @@ if uploaded_files:
                             sn = str(cocok.group(0))
                             break
                         
-                        # Cek rotasi 90 derajat searah jarum jam (jika teks vertikal)
-                        gray_rot = cv2.rotate(gray, cv2.ROTATE_90_CLOCKWISE)
-                        teks_rot = pytesseract.image_to_string(gray_rot, config='--psm 6')
-                        cocok_rot = re.search(r'\b\d{16}\b', teks_rot)
-                        if cocok_rot:
-                            sn = str(cocok_rot.group(0))
+                        # Cek rotasi 90 derajat searah jarum jam
+                        gray_rot_cw = cv2.rotate(gray, cv2.ROTATE_90_CLOCKWISE)
+                        teks_cw = pytesseract.image_to_string(gray_rot_cw, config='--psm 6')
+                        cocok_cw = re.search(r'\b\d{16}\b', teks_cw)
+                        if cocok_cw:
+                            sn = str(cocok_cw.group(0))
+                            break
+
+                        # Cek rotasi 90 derajat berlawanan arah jarum jam
+                        gray_rot_ccw = cv2.rotate(gray, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                        teks_ccw = pytesseract.image_to_string(gray_rot_ccw, config='--psm 6')
+                        cocok_ccw = re.search(r'\b\d{16}\b', teks_ccw)
+                        if cocok_ccw:
+                            sn = str(cocok_ccw.group(0))
                             break
                     except Exception as err:
                         continue

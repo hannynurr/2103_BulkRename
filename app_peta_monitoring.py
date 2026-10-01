@@ -69,13 +69,12 @@ except Exception as e:
 # Layout Tombol Upload & Clear
 col_up1, col_up2 = st.columns([4, 1])
 with col_up2:
-    st.write("") # Spasi sejajar
+    st.write("") 
     st.write("")
     if st.button("🗑️ Kosongkan Sesi"):
         st.session_state.telah_diproses = False
         st.session_state.data_hasil = []
         st.session_state.file_zip = None
-        # Naikkan counter agar uploader mereset total state widget-nya di UI
         st.session_state.uploader_counter += 1
         st.rerun()
 
@@ -105,16 +104,13 @@ if uploaded_files:
                 
                 sn = None
                 
-                # Area target crop diperluas agar kotak border tidak terpotong
-                crop_kanan = img_cv[0:int(tinggi * 0.18), int(lebar * 0.55):lebar]
-                crop_kiri = img_cv[0:tinggi, 0:int(lebar * 0.08)]
-                
-               regions = [
-                    # 1. Area Kanan Atas (Untuk format seperti Foto 1)
+                # Daftar area target crop yang bersih dari karakter tersembunyi
+                regions = [
+                    # 1. Area Kanan Atas (Format Peta Foto 1)
                     img_cv[0:int(tinggi * 0.18), int(lebar * 0.55):lebar],
-                    # 2. Area Kiri Atas (Untuk format seperti Foto 2)
+                    # 2. Area Kiri Atas (Format Peta Foto 2)
                     img_cv[0:int(tinggi * 0.18), 0:int(lebar * 0.45)],
-                    # 3. Area Sisi Kiri Vertikal Full (Jika ada format vertikal di margin)
+                    # 3. Area Sisi Kiri Vertikal Full
                     img_cv[0:tinggi, 0:int(lebar * 0.08)],
                 ]
                 

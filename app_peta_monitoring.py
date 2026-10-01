@@ -104,12 +104,12 @@ if uploaded_files:
                 
                 sn = None
                 
-                # Daftar area target crop yang bersih dari karakter tersembunyi
+                # Area target crop diperluas agar mencakup seluruh variasi posisi kode
                 regions = [
-                    # 1. Area Kanan Atas (Format Peta Foto 1)
-                    img_cv[0:int(tinggi * 0.18), int(lebar * 0.55):lebar],
-                    # 2. Area Kiri Atas (Format Peta Foto 2)
-                    img_cv[0:int(tinggi * 0.18), 0:int(lebar * 0.45)],
+                    # 1. Area Kanan Atas (Diperluas mulai dari 45% lebar ke kanan)
+                    img_cv[0:int(tinggi * 0.20), int(lebar * 0.45):lebar],
+                    # 2. Area Kiri Atas
+                    img_cv[0:int(tinggi * 0.20), 0:int(lebar * 0.45)],
                     # 3. Area Sisi Kiri Vertikal Full
                     img_cv[0:tinggi, 0:int(lebar * 0.08)],
                 ]

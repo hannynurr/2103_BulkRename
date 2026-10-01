@@ -9,6 +9,7 @@ import zipfile
 import pandas as pd
 import json
 import os
+import shutil
 
 # =====================================================================
 # PENTING: Untuk pengguna Windows, pastikan Tesseract sudah terinstal
@@ -93,6 +94,17 @@ if uploaded_files:
                 area_kanan_atas = img_cv[0:batas_bawah, batas_kiri:lebar]
                 
                 gray = cv2.cvtColor(area_kanan_atas, cv2.COLOR_BGR2GRAY)
+
+                
+
+                tesseract_path = shutil.which("tesseract")
+                
+                if tesseract_path is None:
+                    st.error("Tesseract OCR tidak ditemukan.")
+                    st.stop()
+                
+                pytesseract.pytesseract.tesseract_cmd = tesseract_path
+
                 teks = pytesseract.image_to_string(gray)
                 cocok = re.search(r'\b\d{16}\b', teks)
                 

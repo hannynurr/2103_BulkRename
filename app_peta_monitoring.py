@@ -104,15 +104,14 @@ if uploaded_files:
                 
                 sn = None
                 
-                # Area target crop diperluas agar mencakup seluruh variasi posisi kode
-                regions = [
-                    # 1. Area Kanan Atas (Diperluas mulai dari 45% lebar ke kanan)
-                    img_cv[0:int(tinggi * 0.20), int(lebar * 0.45):lebar],
-                    # 2. Area Kiri Atas
-                    img_cv[0:int(tinggi * 0.20), 0:int(lebar * 0.45)],
-                    # 3. Area Sisi Kiri Vertikal Full
-                    img_cv[0:tinggi, 0:int(lebar * 0.08)],
-                ]
+                # FLEKSIBEL: Ambil seluruh area atas peta (25% dari atas, full dari kiri ke kanan)
+                # Ini mengantisipasi kode bergeser ke tengah, kiri, atau kanan atas.
+                area_atas = img_cv[0:int(tinggi * 0.25), 0:lebar]
+                
+                # Tambahan area margin kiri penuh untuk mengantisipasi format vertikal
+                area_kiri_vertikal = img_cv[0:tinggi, 0:int(lebar * 0.10)]
+                
+                regions = [area_atas, area_kiri_vertikal]
                 
                 for region in regions:
                     if region.size == 0:
@@ -120,12 +119,13 @@ if uploaded_files:
                         
                     gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
                     
-                    # Tambahkan padding putih untuk mengeliminasi gangguan garis kotak hitam
-                    gray = cv2.copyMakeBorder(gray, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+                    # Tambahkan padding putih agar batas tepi gambar tidak mengganggu OCR
+                    gray = cv2.copyMakeBorder(gray, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=[255, 255, 255])
                     
-                    # Terapkan Thresholding (Otsu) agar kontras angka dan latar belakang semakin jelas
+                    # Terapkan Thresholding (Otsu) untuk ketajaman maksimal terhadap background
                     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     
+                    # Berbagai variasi rotasi untuk mengatasi kemiringan sudut (0, 90 searah, 90 berlawanan)
                     rotasi_list = [
                         thresh, 
                         cv2.rotate(thresh, cv2.ROTATE_90_CLOCKWISE), 
@@ -135,9 +135,10 @@ if uploaded_files:
                     found = False
                     for img_pro in rotasi_list:
                         try:
-                            # Coba berbagai konfigurasi PSM untuk pembacaan teks dalam kotak
-                            for psm in [6, 7, 8, 11]:
+                            # Gunakan berbagai mode segmentasi Tesseract (PSM 6, 11, 3) agar lebih fleksibel membaca blok angka acak
+                            for psm in [6, 11, 3, 4]:
                                 teks = pytesseract.image_to_string(img_pro, config=f'--psm {psm}')
+                                # Cari pola 16 digit angka yang berurutan
                                 cocok = re.search(r'\b\d{16}\b', teks)
                                 if cocok:
                                     sn = str(cocok.group(0))

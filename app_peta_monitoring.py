@@ -68,14 +68,22 @@ col_up1, col_up2 = st.columns([4, 1])
 with col_up2:
     st.write("") # Spasi sejajar
     st.write("")
-    if st.button("🗑️️ Kosongkan Sesi"):
+    if st.button("🗑️ Kosongkan Sesi"):
         st.session_state.telah_diproses = False
         st.session_state.data_hasil = []
         st.session_state.file_zip = None
+        # Reset file uploader dengan menghapus key-nya dari session_state
+        if "uploader_peta" in st.session_state:
+            del st.session_state.uploader_peta
         st.rerun()
 
-# Upload File Peta
-uploaded_files = st.file_uploader("Pilih file peta", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+# Upload File Peta dengan Key khusus agar bisa di-reset
+uploaded_files = st.file_uploader(
+    "Pilih file peta", 
+    type=["jpg", "jpeg", "png"], 
+    accept_multiple_files=True, 
+    key="uploader_peta"
+)
 
 if uploaded_files:
     st.info(f"Ada {len(uploaded_files)} file yang dipilih untuk diproses.")

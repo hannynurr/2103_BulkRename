@@ -49,6 +49,9 @@ if 'telah_diproses' not in st.session_state:
     st.session_state.data_hasil = []
     st.session_state.file_zip = None
 
+if 'uploader_counter' not in st.session_state:
+    st.session_state.uploader_counter = 0
+
 if 'scanned_sls_set' not in st.session_state:
     st.session_state.scanned_sls_set = load_progress()
 
@@ -72,17 +75,16 @@ with col_up2:
         st.session_state.telah_diproses = False
         st.session_state.data_hasil = []
         st.session_state.file_zip = None
-        # Reset file uploader dengan menghapus key-nya dari session_state
-        if "uploader_peta" in st.session_state:
-            del st.session_state.uploader_peta
+        # Naikkan counter agar uploader mereset total state widget-nya di UI
+        st.session_state.uploader_counter += 1
         st.rerun()
 
-# Upload File Peta dengan Key khusus agar bisa di-reset
+# Upload File Peta dengan Key dinamis berbasis counter agar bersih total saat di-reset
 uploaded_files = st.file_uploader(
     "Pilih file peta", 
     type=["jpg", "jpeg", "png"], 
     accept_multiple_files=True,
-    key="uploader_peta"
+    key=f"uploader_peta_{st.session_state.uploader_counter}"
 )
 
 if uploaded_files:

@@ -109,7 +109,14 @@ if uploaded_files:
                 crop_kanan = img_cv[0:int(tinggi * 0.18), int(lebar * 0.55):lebar]
                 crop_kiri = img_cv[0:tinggi, 0:int(lebar * 0.08)]
                 
-                regions = [crop_kanan, crop_kiri]
+               regions = [
+                    # 1. Area Kanan Atas (Untuk format seperti Foto 1)
+                    img_cv[0:int(tinggi * 0.18), int(lebar * 0.55):lebar],
+                    # 2. Area Kiri Atas (Untuk format seperti Foto 2)
+                    img_cv[0:int(tinggi * 0.18), 0:int(lebar * 0.45)],
+                    # 3. Area Sisi Kiri Vertikal Full (Jika ada format vertikal di margin)
+                    img_cv[0:tinggi, 0:int(lebar * 0.08)],
+                ]
                 
                 for region in regions:
                     if region.size == 0:

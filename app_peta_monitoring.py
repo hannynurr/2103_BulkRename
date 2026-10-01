@@ -12,10 +12,16 @@ import os
 import shutil
 
 # =====================================================================
-# PENTING: Untuk pengguna Windows, pastikan Tesseract sudah terinstal
-# dan sesuaikan path-nya di bawah ini.
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# PENGATURAN TESSERACT OCR (Cross-platform)
 # =====================================================================
+tesseract_path = shutil.which("tesseract")
+if tesseract_path:
+    pytesseract.pytesseract.tesseract_cmd = tesseract_path
+else:
+    # Fallback default Windows path jika tidak ditemukan di environment PATH
+    windows_default = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    if os.path.exists(windows_default):
+        pytesseract.pytesseract.tesseract_cmd = windows_default
 
 st.set_page_config(page_title="Bulk Rename Peta WSS", page_icon="🗺️", layout="wide")
 
@@ -63,7 +69,7 @@ col_up1, col_up2 = st.columns([4, 1])
 with col_up2:
     st.write("") # Spasi sejajar
     st.write("")
-    if st.button("🗑️ Kosongkan Sesi"):
+    if st.button("🗑️️ Kosongkan Sesi"):
         st.session_state.telah_diproses = False
         st.session_state.data_hasil = []
         st.session_state.file_zip = None
@@ -88,28 +94,38 @@ if uploaded_files:
                 img_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
                 tinggi, lebar = img_cv.shape[:2]
                 
-                # Crop & OCR
-                batas_bawah = int(tinggi * 0.15)
-                batas_kiri = int(lebar * 0.60)
-                area_kanan_atas = img_cv[0:batas_bawah, batas_kiri:lebar]
+                sn = None
                 
-                gray = cv2.cvtColor(area_kanan_atas, cv2.COLOR_BGR2GRAY)
-
+                # Daftar area target crop untuk Foto 1 (Kanan Atas) dan Foto 2 (Kiri Atas)
+                regions = [
+                    # 1. Area Kanan Atas (Format Peta Foto 1)
+                    img_cv[0:int(tinggi * 0.15), int(lebar * 0.60):lebar],
+                    # 2. Area Kiri Atas (Format Peta Foto 2)
+                    img_cv[0:int(tinggi * 0.15), 0:int(lebar * 0.40)],
+                ]
                 
-
-                tesseract_path = shutil.which("tesseract")
+                for region in regions:
+                    gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+                    
+                    try:
+                        # Cek pembacaan normal (mendatar)
+                        teks = pytesseract.image_to_string(gray, config='--psm 6')
+                        cocok = re.search(r'\b\d{16}\b', teks)
+                        if cocok:
+                            sn = str(cocok.group(0))
+                            break
+                        
+                        # Cek rotasi 90 derajat searah jarum jam (jika teks vertikal)
+                        gray_rot = cv2.rotate(gray, cv2.ROTATE_90_CLOCKWISE)
+                        teks_rot = pytesseract.image_to_string(gray_rot, config='--psm 6')
+                        cocok_rot = re.search(r'\b\d{16}\b', teks_rot)
+                        if cocok_rot:
+                            sn = str(cocok_rot.group(0))
+                            break
+                    except Exception as err:
+                        continue
                 
-                if tesseract_path is None:
-                    st.error("Tesseract OCR tidak ditemukan.")
-                    st.stop()
-                
-                pytesseract.pytesseract.tesseract_cmd = tesseract_path
-
-                teks = pytesseract.image_to_string(gray)
-                cocok = re.search(r'\b\d{16}\b', teks)
-                
-                if cocok:
-                    sn = str(cocok.group(0))
+                if sn:
                     nama_file_baru = f"{sn}_WSS.jpg"
                     
                     img_byte_arr = io.BytesIO()

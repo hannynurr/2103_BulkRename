@@ -104,18 +104,19 @@ if uploaded_files:
                 
                 sn = None
                 
-                # Area target crop diperluas untuk mencakup posisi vertikal di kiri atas
+                # Definisikan 4 sisi tepi gambar (Atas, Bawah, Kiri, Kanan)
+                # agar aman untuk mendeteksi teks di posisi manapun akibat rotasi peta.
+                h_margin = int(tinggi * 0.25)
+                w_margin = int(lebar * 0.25)
+                
                 regions = [
-                    # 1. Area Kanan Atas
-                    img_cv[0:int(tinggi * 0.20), int(lebar * 0.45):lebar],
-                    # 2. Area Kiri Atas (Horizontal)
-                    img_cv[0:int(tinggi * 0.20), 0:int(lebar * 0.45)],
-                    # 3. Area Pojok Kiri Atas (Vertikal di margin kiri atas)
-                    img_cv[0:int(tinggi * 0.30), 0:int(lebar * 0.15)],
-                    # 4. Area Sisi Kiri Vertikal Full
-                    img_cv[0:tinggi, 0:int(lebar * 0.08)],
+                    img_cv[0:h_margin, 0:lebar],                  # Sisi Atas
+                    img_cv[tinggi - h_margin:tinggi, 0:lebar],      # Sisi Bawah
+                    img_cv[0:tinggi, 0:w_margin],                  # Sisi Kiri
+                    img_cv[0:tinggi, lebar - w_margin:lebar],      # Sisi Kanan
                 ]
                 
+                found = False
                 for region in regions:
                     if region.size == 0:
                         continue
@@ -128,17 +129,18 @@ if uploaded_files:
                     # Terapkan Thresholding (Otsu) agar kontras angka dan latar belakang semakin jelas
                     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     
+                    # Rotasi lengkap 360 derajat (0, 90, 180, 270 derajat)
                     rotasi_list = [
                         thresh, 
                         cv2.rotate(thresh, cv2.ROTATE_90_CLOCKWISE), 
+                        cv2.rotate(thresh, cv2.ROTATE_180),
                         cv2.rotate(thresh, cv2.ROTATE_90_COUNTERCLOCKWISE)
                     ]
                     
-                    found = False
                     for img_pro in rotasi_list:
                         try:
                             # Coba berbagai konfigurasi PSM untuk pembacaan teks dalam kotak
-                            for psm in [6, 7, 8, 11, 3]:
+                            for psm in [6, 11, 3, 7, 8]:
                                 teks = pytesseract.image_to_string(img_pro, config=f'--psm {psm}')
                                 cocok = re.search(r'\b\d{16}\b', teks)
                                 if cocok:

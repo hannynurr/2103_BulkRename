@@ -105,7 +105,6 @@ if uploaded_files:
                 sn = None
 
                 # Definisikan 4 sisi tepi gambar (Atas, Bawah, Kiri, Kanan)
-                # agar aman untuk mendeteksi teks di posisi manapun akibat rotasi peta.
                 h_margin = int(tinggi * 0.25)
                 w_margin = int(lebar * 0.25)
 
@@ -242,3 +241,60 @@ m3.metric("Belum Discan", belum_scan)
 if st.button("🔄 Reset Status Monitoring"):
     st.session_state.scanned_sls_set = set()
     if os.path.exists(PROGRESS_FILE):
+        os.remove(PROGRESS_FILE)
+    st.rerun()
+
+# Layout Filter Berdampingan (3 Kolom: Kecamatan, Desa/Kelurahan, Status)
+col_f1, col_f2, col_f3 = st.columns(3)
+
+with col_f1:
+    pilih_kec = st.selectbox(
+        "Filter Kecamatan:", 
+        ["Semua Kecamatan"] + sorted(list(df_master['nmkec'].unique()))
+    )
+
+# Filter pilihan desa berdasarkan kecamatan yang dipilih agar dinamis
+if pilih_kec != "Semua Kecamatan":
+    list_desa = sorted(list(df_master[df_master['nmkec'] == pilih_kec]['nmdesa'].unique()))
+else:
+    list_desa = sorted(list(df_master['nmdesa'].unique()))
+
+with col_f2:
+    pilih_desa = st.selectbox(
+        "Filter Desa/Kelurahan:",
+        ["Semua Desa/Kelurahan"] + list_desa
+    )
+
+with col_f3:
+    pilih_status = st.selectbox(
+        "Filter Status:", 
+        ["Semua Status", "Sudah", "Belum"]
+    )
+
+# Terapkan Filter ke DataFrame
+df_tampil = df_master.copy()
+
+if pilih_kec != "Semua Kecamatan":
+    df_tampil = df_tampil[df_tampil['nmkec'] == pilih_kec]
+
+if pilih_desa != "Semua Desa/Kelurahan":
+    df_tampil = df_tampil[df_tampil['nmdesa'] == pilih_desa]
+
+if pilih_status != "Semua Status":
+    df_tampil = df_tampil[df_tampil['Status_Scan'] == pilih_status]
+
+# Fungsi Styling untuk mewarnai teks baris tabel
+def color_status(val):
+    if val == "Belum":
+        return 'color: red; font-weight: bold;'
+    elif val == "Sudah":
+        return 'color: green; font-weight: bold;'
+    return ''
+
+# Tampilkan Tabel dengan Style Pandas
+st.write(f"Menampilkan **{len(df_tampil)}** dari total **{total_sls}** SLS")
+
+df_display = df_tampil[['idsubsls', 'nmsls', 'nmkec', 'nmdesa', 'Status_Scan']]
+styled_df = df_display.style.map(color_status, subset=['Status_Scan'])
+
+st.dataframe(styled_df, use_container_width=True, height=400)

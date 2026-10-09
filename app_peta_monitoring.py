@@ -88,47 +88,47 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     st.info(f"Ada {len(uploaded_files)} file yang dipilih untuk diproses.")
-    
+
     if st.button("Mulai Proses Identifikasi ;)"):
         zip_buffer = io.BytesIO()
         progress_bar = st.progress(0)
         status_teks = st.empty()
-        
+
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for i, uploaded_file in enumerate(uploaded_files):
                 status_teks.text(f"Memproses: {uploaded_file.name} ({i+1}/{len(uploaded_files)})")
-                
+
                 image = Image.open(uploaded_file)
                 img_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
                 tinggi, lebar = img_cv.shape[:2]
-                
+
                 sn = None
-                
+
                 # Definisikan 4 sisi tepi gambar (Atas, Bawah, Kiri, Kanan)
                 # agar aman untuk mendeteksi teks di posisi manapun akibat rotasi peta.
                 h_margin = int(tinggi * 0.25)
                 w_margin = int(lebar * 0.25)
-                
+
                 regions = [
                     img_cv[0:h_margin, 0:lebar],                  # Sisi Atas
                     img_cv[tinggi - h_margin:tinggi, 0:lebar],      # Sisi Bawah
                     img_cv[0:tinggi, 0:w_margin],                  # Sisi Kiri
                     img_cv[0:tinggi, lebar - w_margin:lebar],      # Sisi Kanan
                 ]
-                
+
                 found = False
                 for region in regions:
                     if region.size == 0:
                         continue
-                        
+
                     gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
-                    
+
                     # Tambahkan padding putih untuk mengeliminasi gangguan garis kotak hitam
                     gray = cv2.copyMakeBorder(gray, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=[255, 255, 255])
-                    
+
                     # Terapkan Thresholding (Otsu) agar kontras angka dan latar belakang semakin jelas
                     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                    
+
                     # Rotasi lengkap 360 derajat (0, 90, 180, 270 derajat)
                     rotasi_list = [
                         thresh, 
@@ -136,7 +136,7 @@ if uploaded_files:
                         cv2.rotate(thresh, cv2.ROTATE_180),
                         cv2.rotate(thresh, cv2.ROTATE_90_COUNTERCLOCKWISE)
                     ]
-                    
+
                     for img_pro in rotasi_list:
                         try:
                             # Coba berbagai konfigurasi PSM untuk pembacaan teks dalam kotak
@@ -153,20 +153,20 @@ if uploaded_files:
                             continue
                     if found:
                         break
-                
+
                 if sn:
                     nama_file_baru = f"{sn}_WSS.jpg"
-                    
+
                     img_byte_arr = io.BytesIO()
                     image.save(img_byte_arr, format='JPEG')
                     img_byte_arr_val = img_byte_arr.getvalue()
-                    
+
                     zip_file.writestr(nama_file_baru, img_byte_arr_val)
-                    
+
                     # Masukkan ke set dan simpan otomatis ke file JSON lokal
                     st.session_state.scanned_sls_set.add(sn)
                     save_progress(st.session_state.scanned_sls_set)
-                    
+
                     st.session_state.data_hasil.append({
                         "file_asli": uploaded_file.name,
                         "status": "Sukses",
@@ -182,9 +182,9 @@ if uploaded_files:
                         "nama_baru": None,
                         "bytes": None
                     })
-                
+
                 progress_bar.progress((i + 1) / len(uploaded_files))
-        
+
         st.session_state.file_zip = zip_buffer.getvalue()
         status_teks.empty()
         progress_bar.empty()
@@ -204,7 +204,7 @@ if uploaded_files:
             else:
                 col2.error("Gagal mendeteksi")
                 col3.write("-")
-                
+
         # Tombol Download ZIP
         st.write("---")
         st.subheader("📦 Arsip Download")
@@ -218,7 +218,7 @@ if uploaded_files:
         )
 
 # =====================================================================
-# MASTER MONITORING 784 SLS (DENGAN WARNA FONT MERAH/HIJAU)
+# MASTER MONITORING 784 SLS (DENGAN WARNA FONT MERAH/HIJAU & FILTER DESA)
 # =====================================================================
 st.write("---")
 st.header("📊 Monitoring 784 SLS Natuna")
@@ -242,45 +242,3 @@ m3.metric("Belum Discan", belum_scan)
 if st.button("🔄 Reset Status Monitoring"):
     st.session_state.scanned_sls_set = set()
     if os.path.exists(PROGRESS_FILE):
-        os.remove(PROGRESS_FILE)
-    st.rerun()
-
-# Layout Filter Berdampingan (Kecamatan & Status)
-col_f1, col_f2 = st.columns(2)
-
-with col_f1:
-    pilih_kec = st.selectbox(
-        "Filter Berdasarkan Kecamatan:", 
-        ["Semua Kecamatan"] + list(df_master['nmkec'].unique())
-    )
-
-with col_f2:
-    pilih_status = st.selectbox(
-        "Filter Berdasarkan Status:", 
-        ["Semua Status", "Sudah", "Belum"]
-    )
-
-# Terapkan Filter ke DataFrame
-df_tampil = df_master.copy()
-
-if pilih_kec != "Semua Kecamatan":
-    df_tampil = df_tampil[df_tampil['nmkec'] == pilih_kec]
-
-if pilih_status != "Semua Status":
-    df_tampil = df_tampil[df_tampil['Status_Scan'] == pilih_status]
-
-# Fungsi Styling untuk mewarnai teks baris tabel
-def color_status(val):
-    if val == "Belum":
-        return 'color: red; font-weight: bold;'
-    elif val == "Sudah":
-        return 'color: green; font-weight: bold;'
-    return ''
-
-# Tampilkan Tabel dengan Style Pandas
-st.write(f"Menampilkan **{len(df_tampil)}** dari total **{total_sls}** SLS")
-
-df_display = df_tampil[['idsubsls', 'nmsls', 'nmkec', 'nmdesa', 'Status_Scan']]
-styled_df = df_display.style.map(color_status, subset=['Status_Scan'])
-
-st.dataframe(styled_df, use_container_width=True, height=400)
